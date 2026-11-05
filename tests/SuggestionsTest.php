@@ -177,6 +177,22 @@ class SuggestionsTest extends OOBJ_SEARCH_TestCase {
 		);
 	}
 
+	public function test_counts_are_worked_out_once_per_set_of_results() {
+		$ids         = $this->rings();
+		$suggestions = $this->suggestions();
+
+		$facts  = $suggestions->facts_of( $ids );
+		$prices = $suggestions->prices_of( $ids );
+		$this->assertSame( 3, $facts['material']['titanium'] );
+		$this->assertSame( 3, $prices[10] );
+
+		global $wpdb;
+		$queries = $wpdb->num_queries;
+		$this->assertSame( $facts, $suggestions->facts_of( $ids ) );
+		$this->assertSame( $prices, $suggestions->prices_of( $ids ) );
+		$this->assertSame( $queries, $wpdb->num_queries );
+	}
+
 	public function test_nothing_for_few_results_or_no_words() {
 		$ids = $this->rings();
 

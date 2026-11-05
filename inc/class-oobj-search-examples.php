@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
  * show while the form is in use. It shows what the search understands before anyone types:
  * - example searches (EXAMPLES, and each season's from OOBJ_SEARCH_Vocabulary::SEASONS, marked with their dates so a
  *   cached page still shows them in season), which between them use everything the search understands;
- * - "Search by": the materials, fittings, gauges, colours and themes the shop has (OOBJ_SEARCH_Catalogue: at least
+ * - "Search by": the materials, fittings, gauges (with their mm), sizes in mm, colours and themes the shop has (OOBJ_SEARCH_Catalogue: at least
  *   MIN_PRODUCTS products, most searched first), and price limits, as buttons that add their words to the search, so
  *   shoppers build "titanium threadless 16g" themselves and learn what the search knows.
  *
@@ -41,6 +41,7 @@ class OOBJ_SEARCH_Examples implements OOBJ_SEARCH_Module {
 		'material' => 'Material',
 		'fitting'  => 'Fitting',
 		'gauge'    => 'Gauge',
+		'size'     => 'Size',
 		'colour'   => 'Colour',
 		'theme'    => 'Theme',
 	);
@@ -151,15 +152,15 @@ class OOBJ_SEARCH_Examples implements OOBJ_SEARCH_Module {
 		foreach ( self::GROUPS as $facet => $heading ) {
 			$chips = '';
 			foreach ( $this->values( $facet, $counts[ $facet ] ?? array() ) as $value ) {
-				$chips .= $this->chip( OOBJ_SEARCH_Vocabulary::phrase( $facet, $value ), self::chip_label( $facet, $value ), $this->season_attributes( $facet, $value ) );
+				$chips .= $this->chip( OOBJ_SEARCH_Vocabulary::phrase( $facet, $value ), self::chip_label( $facet, $value ), self::chip_detail( $facet, $value ), $this->season_attributes( $facet, $value ) );
 			}
-			$html .= '' === $chips ? '' : $this->group( $facet, $heading, $chips );
+			$html .= '' === $chips ? '' : self::group( $facet, $heading, $chips );
 		}
 		$chips = '';
 		foreach ( self::PRICES as $words => $label ) {
-			$chips .= $this->chip( $words, $label, '' );
+			$chips .= $this->chip( $words, $label, '', '' );
 		}
-		return $html . $this->group( 'price', 'Price', $chips );
+		return $html . self::group( 'price', 'Price', $chips );
 	}
 
 	/**
@@ -175,26 +176,49 @@ class OOBJ_SEARCH_Examples implements OOBJ_SEARCH_Module {
 		if ( 'gauge' === $facet ) {
 			// Only gauges with a number: a stretching size in mm ("12mm") reads back as a length.
 			$values = array_values( array_intersect( $values, OOBJ_SEARCH_Vocabulary::GAUGES ) );
-			// The gauges the shop has most of, thinnest first.
-			usort( $values, fn( $a, $b ) => $counts[ $b ] <=> $counts[ $a ] );
-			$values = array_slice( $values, 0, self::PER_GROUP );
-			usort( $values, fn( $a, $b ) => (float) $a <=> (float) $b );
-			return $values;
+		}
+		if ( 'gauge' === $facet || 'size' === $facet ) {
+			// The ones the shop has most of, smallest first.
+			return self::smallest_first( $values, $counts );
 		}
 		$demand = OOBJ_SEARCH_Vocabulary::DEMAND[ $facet ] ?? array();
-		usort( $values, fn( $a, $b ) => ( $demand[ $b ] ?? 0 ) <=> ( $demand[ $a ] ?? 0 ) ?: $counts[ $b ] <=> $counts[ $a ] );
+		usort( $values, fn( $a, $b ) => array( $demand[ $b ] ?? 0, $counts[ $b ] ) <=> array( $demand[ $a ] ?? 0, $counts[ $a ] ) );
 		return array_slice( $values, 0, self::PER_GROUP );
 	}
 
 	/**
+	 * The PER_GROUP values with the most products, smallest first (gauges, sizes).
+	 *
+	 * @param string[]           $values Values in mm.
+	 * @param array<string, int> $counts Their products.
+	 * @return string[]
+	 */
+	public static function smallest_first( array $values, array $counts ): array {
+		usort( $values, fn( $a, $b ) => $counts[ $b ] <=> $counts[ $a ] );
+		$values = array_slice( $values, 0, self::PER_GROUP );
+		usort( $values, fn( $a, $b ) => (float) $a <=> (float) $b );
+		return $values;
+	}
+
+	/**
+	 * A gauge's thickness to show on its button ("1.2mm"), or ''.
+	 *
+	 * @param string $facet A facet.
+	 * @param string $value Its value.
+	 */
+	public static function chip_detail( string $facet, string $value ): string {
+		return 'gauge' === $facet ? $value . 'mm' : '';
+	}
+
+	/**
 	 * A value's button label, short: its label without an explanation or a second name ("Threadless", not "Threadless
-	 * (push pin)"; "Bioplast", not "Bioplast and bioflex"), a gauge's number ("16g").
+	 * (push pin)"; "Bioplast", not "Bioplast and bioflex"), a gauge's number ("16g"), a size in mm ("8mm").
 	 *
 	 * @param string $facet A facet.
 	 * @param string $value Its value.
 	 */
 	public static function chip_label( string $facet, string $value ): string {
-		if ( 'gauge' === $facet ) {
+		if ( 'gauge' === $facet || 'size' === $facet ) {
 			return OOBJ_SEARCH_Vocabulary::phrase( $facet, $value );
 		}
 		$label = (string) preg_replace( '/\s*\(.*\)$/', '', OOBJ_SEARCH_Vocabulary::label( $facet, $value ) );
@@ -223,7 +247,7 @@ class OOBJ_SEARCH_Examples implements OOBJ_SEARCH_Module {
 	 * @param string $heading Its heading.
 	 * @param string $chips   Its buttons.
 	 */
-	private function group( string $name, string $heading, string $chips ): string {
+	public static function group( string $name, string $heading, string $chips ): string {
 		return sprintf(
 			'<div class="oobj-search-panel__group oobj-search-panel__group--%1$s" role="group" aria-label="%2$s"><p class="oobj-search-panel__label" aria-hidden="true">%3$s</p><ul class="oobj-search-panel__chips">%4$s</ul></div>',
 			esc_attr( $name ),
@@ -239,9 +263,20 @@ class OOBJ_SEARCH_Examples implements OOBJ_SEARCH_Module {
 	 *
 	 * @param string $words      The words it adds.
 	 * @param string $label      Its label.
+	 * @param string $detail     A second, quieter part of its label ("1.2mm"), or ''.
 	 * @param string $attributes More attributes for its item, escaped.
 	 */
-	private function chip( string $words, string $label, string $attributes ): string {
-		return sprintf( '<li%1$s><button type="button" class="oobj-search-panel__chip" data-add="%2$s" aria-pressed="false">%3$s</button></li>', $attributes, esc_attr( $words ), esc_html( $label ) );
+	private function chip( string $words, string $label, string $detail, string $attributes ): string {
+		return sprintf( '<li%1$s><button type="button" class="oobj-search-panel__chip" data-add="%2$s" aria-pressed="false">%3$s</button></li>', $attributes, esc_attr( $words ), self::chip_text( $label, $detail ) );
+	}
+
+	/**
+	 * A button's label, with its detail ("16g <span>1.2mm</span>"), escaped.
+	 *
+	 * @param string $label  The label.
+	 * @param string $detail Its detail, or ''.
+	 */
+	public static function chip_text( string $label, string $detail ): string {
+		return esc_html( $label ) . ( '' === $detail ? '' : ' <span class="oobj-search-panel__detail">' . esc_html( $detail ) . '</span>' );
 	}
 }

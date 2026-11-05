@@ -45,6 +45,37 @@ class NoticeTest extends OOBJ_SEARCH_TestCase {
 		$this->assertStringContainsString( 'oobj-search-notice__suggestion--material" href="' . esc_url( $this->notice()->search_url( 'titanium spiral' ) ) . '">titanium spiral <span class="oobj-search-notice__count">3 products</span>', $html );
 	}
 
+	public function test_search_by_offers_what_narrows_the_results() {
+		foreach ( array( 'Titanium Threadless 16G Spiral', 'Titanium Threadless 16G 8mm Spiral', 'Titanium Threadless 16G 8mm Spiral Two', 'Titanium 14G 6mm Spiral', 'Titanium 14G 6mm Spiral Two', 'Titanium 14G 6mm Spiral Three', 'Steel Spiral' ) as $i => $name ) {
+			$this->product( $name, 4 + 4 * $i );
+		}
+		$this->search( 'spiral' );
+
+		$html = $this->notice()->html();
+
+		$this->assertStringContainsString( '<details class="oobj-search-notice__by"><summary class="oobj-search-notice__label oobj-search-notice__label--by">Search by</summary>', $html );
+		$this->assertStringContainsString( 'href="' . esc_url( $this->notice()->search_url( 'titanium spiral' ) ) . '" aria-label="Titanium, 6 products">Titanium</a>', $html, 'A value most of them have' );
+		$this->assertStringContainsString( 'aria-label="Threadless, 3 products">Threadless</a>', $html );
+		$this->assertMatchesRegularExpression( '#>16g <span class="oobj-search-panel__detail">1.2mm</span></a></li><li><a [^>]*>14g <span class="oobj-search-panel__detail">1.6mm</span></a>#', $html, 'Gauges thinnest first, with mm' );
+		$this->assertStringNotContainsString( 'Steel</a>', $html, 'Too few to offer' );
+		$this->assertStringContainsString( 'href="' . esc_url( $this->notice()->search_url( 'spiral under $15' ) ) . '" aria-label="Under $15, 3 products">Under $15</a>', $html );
+		$this->assertStringNotContainsString( '>Under $5</a>', $html, 'Too few under $5' );
+		$this->assertStringContainsString( 'aria-label="Under $20, 5 products"', $html );
+	}
+
+	public function test_search_by_shows_what_the_search_has_as_on() {
+		foreach ( array( 'Titanium Threadless Spiral', 'Titanium Threadless Spiral Two', 'Titanium Threadless Spiral Three', 'Titanium Spiral', 'Titanium Spiral Two', 'Titanium Spiral Three' ) as $name ) {
+			$this->product( $name, 6 );
+		}
+		$this->search( 'titanium spiral under $10' );
+
+		$html = $this->notice()->html();
+
+		$this->assertStringContainsString( '<a class="oobj-search-panel__chip oobj-search-panel__chip--on" href="' . esc_url( $this->notice()->search_url( 'spiral under $10' ) ) . '" aria-label="Remove Titanium from the search">Titanium</a>', $html );
+		$this->assertStringContainsString( 'oobj-search-panel__chip--on" href="' . esc_url( $this->notice()->search_url( 'titanium spiral' ) ) . '" aria-label="Remove Under $10 from the search">Under $10</a>', $html );
+		$this->assertStringContainsString( 'href="' . esc_url( $this->notice()->search_url( 'threadless titanium spiral under $10' ) ) . '" aria-label="Threadless, 3 products">', $html, 'Worded as the suggestions are' );
+	}
+
 	public function test_nothing_when_nothing_was_found() {
 		$this->search( 'titanium' );
 

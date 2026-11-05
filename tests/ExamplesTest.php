@@ -50,11 +50,26 @@ class ExamplesTest extends OOBJ_SEARCH_TestCase {
 		$this->assertMatchesRegularExpression( '#group--material" role="group" aria-label="Search by material"><p class="oobj-search-panel__label" aria-hidden="true">Material</p><ul class="oobj-search-panel__chips"><li><button type="button" class="oobj-search-panel__chip" data-add="titanium" aria-pressed="false">Titanium</button></li><li>[^<]*<button[^>]*data-add="acrylic"#', $html, 'Most searched first' );
 		$this->assertStringNotContainsString( 'data-add="wood"', $html, 'Too few products' );
 		$this->assertStringContainsString( 'data-add="threadless" aria-pressed="false">Threadless</button>', $html );
-		$this->assertMatchesRegularExpression( '#data-add="16g"[^>]*>16g</button></li><li><button[^>]*data-add="14g"#', $html, 'Gauges thinnest first' );
+		$this->assertMatchesRegularExpression( '#data-add="16g"[^>]*>16g <span class="oobj-search-panel__detail">1.2mm</span></button></li><li><button[^>]*data-add="14g"#', $html, 'Gauges thinnest first' );
 		$this->assertStringNotContainsString( 'data-add="8mm"', $html, 'A stretching size in mm is no gauge button' );
 		$this->assertStringContainsString( '<li data-from="09-15" data-to="10-31"><button type="button" class="oobj-search-panel__chip" data-add="spooky"', $html, 'Seasonal: dated' );
 		$this->assertStringContainsString( 'data-add="under $10" aria-pressed="false">Under $10</button>', $html );
 		$this->assertStringContainsString( 'data-add="cheapest" aria-pressed="false">Cheapest first</button>', $html );
+	}
+
+	public function test_sizes_the_most_common_smallest_first() {
+		$this->assertSame(
+			array( '4', '8', '10', '25' ),
+			OOBJ_SEARCH_Examples::smallest_first(
+				array( '10', '4', '8', '25' ),
+				array(
+					'10' => 9,
+					'4'  => 5,
+					'8'  => 7,
+					'25' => 1,
+				)
+			)
+		);
 	}
 
 	public function test_button_labels_are_short() {
@@ -62,6 +77,11 @@ class ExamplesTest extends OOBJ_SEARCH_TestCase {
 		$this->assertSame( 'Bioplast', OOBJ_SEARCH_Examples::chip_label( 'material', 'bioplast' ) );
 		$this->assertSame( 'AB', OOBJ_SEARCH_Examples::chip_label( 'colour', 'ab' ) );
 		$this->assertSame( '16g', OOBJ_SEARCH_Examples::chip_label( 'gauge', '1.2' ) );
+		$this->assertSame( '1.2mm', OOBJ_SEARCH_Examples::chip_detail( 'gauge', '1.2' ) );
+		$this->assertSame( '', OOBJ_SEARCH_Examples::chip_detail( 'size', '8' ) );
+		$this->assertSame( '8mm', OOBJ_SEARCH_Examples::chip_label( 'size', '8' ) );
+		$this->assertSame( 'Rose gold', OOBJ_SEARCH_Examples::chip_text( 'Rose gold', '' ) );
+		$this->assertSame( '16g <span class="oobj-search-panel__detail">1.2mm</span>', OOBJ_SEARCH_Examples::chip_text( '16g', '1.2mm' ) );
 	}
 
 	public function test_with_nothing_indexed_only_prices_are_offered() {

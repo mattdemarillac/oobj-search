@@ -67,6 +67,7 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 		$html  = $query->understood() ? $this->understood( $query, $current['relaxed'] ) : '';
 		$ids   = $this->found_ids();
 		$html .= $this->suggestions_html( $this->suggestions->suggest( $query, $ids ) );
+		$html .= $this->search_by( $query, $ids );
 		return '' === $html ? '' : '<div class="oobj-search-notice" role="status">' . $html . '</div>';
 	}
 
@@ -136,6 +137,127 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 			'<p class="oobj-search-notice__label oobj-search-notice__label--try">%1$s</p><ul class="oobj-search-notice__suggestions">%2$s</ul>',
 			esc_html__( 'Try:', 'oobj-search' ),
 			$items
+		);
+	}
+
+	/**
+	 * "Search by" for these results, as on the search panel (OOBJ_SEARCH_Examples): for each kind, what the search
+	 * already has (on: a link to search without it), or the values among the results that would narrow them, each a
+	 * link to the search with it added. Prices likewise.
+	 *
+	 * @param OOBJ_SEARCH_Query $query The search.
+	 * @param int[]             $ids   Its results.
+	 */
+	private function search_by( OOBJ_SEARCH_Query $query, array $ids ): string {
+		$total = count( $ids );
+		if ( $total < OOBJ_SEARCH_Suggestions::MIN_RESULTS ) {
+			return '';
+		}
+
+		$facts  = $this->suggestions->facts_of( $ids );
+		$groups = '';
+		foreach ( OOBJ_SEARCH_Examples::GROUPS as $facet => $heading ) {
+			$chips = '';
+			if ( ! empty( $query->facets[ $facet ] ) ) {
+				foreach ( $query->parts as $index => $part ) {
+					if ( $facet === $part['kind'] ) {
+						$chips .= $this->on( $query, $index, OOBJ_SEARCH_Examples::chip_label( $facet, $part['value'] ), OOBJ_SEARCH_Examples::chip_detail( $facet, $part['value'] ) );
+					}
+				}
+			} else {
+				foreach ( $this->narrowing( $facet, $facts[ $facet ] ?? array(), $total ) as $value => $count ) {
+					$chips .= $this->link( OOBJ_SEARCH_Suggestions::compose( $query, $facet, (string) $value ), OOBJ_SEARCH_Examples::chip_label( $facet, (string) $value ), OOBJ_SEARCH_Examples::chip_detail( $facet, (string) $value ), $count );
+				}
+			}
+			$groups .= '' === $chips ? '' : OOBJ_SEARCH_Examples::group( $facet, $heading, $chips );
+		}
+
+		$chips = '';
+		foreach ( $query->parts as $index => $part ) {
+			if ( 'price' === $part['kind'] ) {
+				$chips .= $this->on( $query, $index, $part['label'], '' );
+			}
+		}
+		if ( '' === $chips ) {
+			$under = $this->suggestions->prices_of( $ids );
+			foreach ( OOBJ_SEARCH_Suggestions::PRICES as $price ) {
+				if ( $under[ $price ] >= OOBJ_SEARCH_Suggestions::MIN_FOUND && $under[ $price ] < $total ) {
+					/* translators: %d: a price in dollars. */
+					$chips .= $this->link( $query->normalised . ' under $' . $price, sprintf( __( 'Under $%d', 'oobj-search' ), $price ), '', $under[ $price ] );
+				}
+			}
+		}
+		$groups .= '' === $chips ? '' : OOBJ_SEARCH_Examples::group( 'price', 'Price', $chips );
+
+		return '' === $groups ? '' : sprintf(
+			'<details class="oobj-search-notice__by"><summary class="oobj-search-notice__label oobj-search-notice__label--by">%1$s</summary><div class="oobj-search-notice__groups">%2$s</div></details>',
+			esc_html__( 'Search by', 'oobj-search' ),
+			$groups
+		);
+	}
+
+	/**
+	 * A facet's values among the results that would narrow them (MIN_FOUND or more, not all), as on the search panel:
+	 * gauges and sizes the most common smallest first, the rest most searched first; at most PER_GROUP.
+	 *
+	 * @param string             $facet  A facet.
+	 * @param array<string, int> $counts Its values among the results.
+	 * @param int                $total  How many results.
+	 * @return array<string, int> Value => products.
+	 */
+	private function narrowing( string $facet, array $counts, int $total ): array {
+		$counts = array_filter( $counts, fn( $count ) => $count >= OOBJ_SEARCH_Suggestions::MIN_FOUND && $count < $total );
+		$values = array_map( 'strval', array_keys( $counts ) );
+		if ( 'gauge' === $facet ) {
+			$values = array_values( array_intersect( $values, OOBJ_SEARCH_Vocabulary::GAUGES ) );
+		}
+		if ( 'gauge' === $facet || 'size' === $facet ) {
+			$values = OOBJ_SEARCH_Examples::smallest_first( $values, $counts );
+		} else {
+			$demand = OOBJ_SEARCH_Vocabulary::DEMAND[ $facet ] ?? array();
+			usort( $values, fn( $a, $b ) => array( $demand[ $b ] ?? 0, $counts[ $b ] ) <=> array( $demand[ $a ] ?? 0, $counts[ $a ] ) );
+			$values = array_slice( $values, 0, OOBJ_SEARCH_Examples::PER_GROUP );
+		}
+		$narrowing = array();
+		foreach ( $values as $value ) {
+			$narrowing[ $value ] = $counts[ $value ];
+		}
+		return $narrowing;
+	}
+
+	/**
+	 * A "Search by" link to the search with something added.
+	 *
+	 * @param string $search The search.
+	 * @param string $label  Its label.
+	 * @param string $detail Its detail ("1.2mm"), or ''.
+	 * @param int    $count  How many products it finds.
+	 */
+	private function link( string $search, string $label, string $detail, int $count ): string {
+		return sprintf(
+			'<li><a class="oobj-search-panel__chip" href="%1$s" aria-label="%2$s">%3$s</a></li>',
+			esc_url( $this->search_url( $search ) ),
+			/* translators: 1: what to add, e.g. "Titanium"; 2: how many products. */
+			esc_attr( sprintf( _n( '%1$s, %2$d product', '%1$s, %2$d products', $count, 'oobj-search' ), trim( $label . ' ' . $detail ), $count ) ),
+			OOBJ_SEARCH_Examples::chip_text( $label, $detail )
+		);
+	}
+
+	/**
+	 * A "Search by" link for something the search has: on, to search without it.
+	 *
+	 * @param OOBJ_SEARCH_Query $query The search.
+	 * @param int               $index The part.
+	 * @param string            $label Its label.
+	 * @param string            $detail Its detail, or ''.
+	 */
+	private function on( OOBJ_SEARCH_Query $query, int $index, string $label, string $detail ): string {
+		return sprintf(
+			'<li><a class="oobj-search-panel__chip oobj-search-panel__chip--on" href="%1$s" aria-label="%2$s">%3$s</a></li>',
+			esc_url( $this->search_url( $query->without( $index ) ) ),
+			/* translators: %s: what the search has, e.g. "Titanium". */
+			esc_attr( sprintf( __( 'Remove %s from the search', 'oobj-search' ), trim( $label . ' ' . $detail ) ) ),
+			OOBJ_SEARCH_Examples::chip_text( $label, $detail )
 		);
 	}
 

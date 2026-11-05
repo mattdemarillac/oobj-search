@@ -85,6 +85,13 @@ class OOBJ_SEARCH_Suggestions {
 	 */
 	private $today;
 
+	/**
+	 * Counts already made this request.
+	 *
+	 * @var array<string, array>
+	 */
+	private $counted = array();
+
 	public function __construct( OOBJ_SEARCH_Query_Parser $parser, OOBJ_SEARCH_Catalogue $catalogue, ?DateTimeInterface $today = null ) {
 		$this->parser    = $parser;
 		$this->catalogue = $catalogue;
@@ -105,11 +112,11 @@ class OOBJ_SEARCH_Suggestions {
 		}
 
 		$candidates = array_merge(
-			$this->facts( $query, $this->fact_counts( $ids ), $total ),
+			$this->facts( $query, $this->facts_of( $ids ), $total ),
 			$this->seasonal_categories( $query, $ids, $total ),
 			array_filter( array( $this->price( $query, $ids, $total ), $this->sort( $query, $total ) ) )
 		);
-		usort( $candidates, fn( $a, $b ) => $b['score'] <=> $a['score'] ?: strcmp( $a['text'], $b['text'] ) );
+		usort( $candidates, fn( $a, $b ) => array( $b['score'], $a['text'] ) <=> array( $a['score'], $b['text'] ) );
 
 		$chosen = array();
 		foreach ( $candidates as $candidate ) {
@@ -265,7 +272,7 @@ class OOBJ_SEARCH_Suggestions {
 		if ( null !== $query->min_price || null !== $query->max_price ) {
 			return null;
 		}
-		$under = $this->under_counts( $ids );
+		$under = $this->prices_of( $ids );
 		foreach ( self::PRICES as $price ) {
 			$count = $under[ $price ];
 			if ( $count >= max( self::MIN_FOUND, (int) ceil( $total / 5 ) ) && $count < $total ) {
@@ -300,12 +307,41 @@ class OOBJ_SEARCH_Suggestions {
 	}
 
 	/**
+	 * How many of the products have each fact, by facet, most first. Kept for the request: the results page's
+	 * "Search by" asks for the same products.
+	 *
+	 * @param int[] $ids Products.
+	 * @return array<string, array<string, int>>
+	 */
+	public function facts_of( array $ids ): array {
+		$key = 'facts:' . md5( implode( ',', $ids ) );
+		if ( ! isset( $this->counted[ $key ] ) ) {
+			$this->counted[ $key ] = $this->count_facts( $ids );
+		}
+		return $this->counted[ $key ];
+	}
+
+	/**
+	 * How many of the products have a price up to each of PRICES (any variation), kept for the request.
+	 *
+	 * @param int[] $ids Products.
+	 * @return array<int, int>
+	 */
+	public function prices_of( array $ids ): array {
+		$key = 'prices:' . md5( implode( ',', $ids ) );
+		if ( ! isset( $this->counted[ $key ] ) ) {
+			$this->counted[ $key ] = $this->count_prices( $ids );
+		}
+		return $this->counted[ $key ];
+	}
+
+	/**
 	 * How many of the products have each fact, by facet.
 	 *
 	 * @param int[] $ids Products.
 	 * @return array<string, array<string, int>>
 	 */
-	private function fact_counts( array $ids ): array {
+	private function count_facts( array $ids ): array {
 		global $wpdb;
 		$in = implode( ',', array_map( 'intval', $ids ) );
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- integers only.
@@ -329,7 +365,7 @@ class OOBJ_SEARCH_Suggestions {
 	 * @param int[] $ids Products.
 	 * @return array<int, int>
 	 */
-	private function under_counts( array $ids ): array {
+	private function count_prices( array $ids ): array {
 		global $wpdb;
 		$in      = implode( ',', array_map( 'intval', $ids ) );
 		$columns = implode( ', ', array_map( fn( $price ) => "SUM(min_price <= $price) AS under_$price", self::PRICES ) );
