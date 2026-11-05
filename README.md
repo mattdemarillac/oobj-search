@@ -31,7 +31,7 @@ wp oobj-search examples                             # what each example search f
 - `composer test:coverage`: fails below 100% of lines.
 - `composer lint`: WordPress Coding Standards.
 
-To teach it a word, add the phrase to the vocabulary and a real query to the fixtures; product facts are worked out again by themselves when the vocabulary changes.
+How to tune it (what each setting does, finding what isn't understood, checking a change): `docs/tuning.md`. To teach it a word, add the phrase to the vocabulary and a real query to the fixtures; product facts are worked out again by themselves when the vocabulary changes.
 
 ## Releases and updates
 
