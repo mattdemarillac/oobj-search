@@ -1,5 +1,9 @@
 # Out Of Body Search
 
+[![Build and Release](https://github.com/mattdemarillac/oobj-search/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/mattdemarillac/oobj-search/actions/workflows/release.yml) [![Security](https://github.com/mattdemarillac/oobj-search/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/mattdemarillac/oobj-search/actions/workflows/security.yml)
+
+By [Out Of Body Jewellery](https://outofbody.com.au/about-us/).
+
 A WooCommerce plugin for outofbody.com.au: the shop's product search understands what shoppers type. "cheap titanium threadless septum 16g under $10" finds titanium, threadless, 16 gauge septum jewellery up to $10, cheapest first, and the results page says what it understood, as links to search again without each part.
 
 ## How it works

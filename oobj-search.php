@@ -8,6 +8,7 @@
  * Requires Plugins:  woocommerce
  * Update URI:        https://github.com/mattdemarillac/oobj-search
  * Author:            Out Of Body Jewellery
+ * Author URI:        https://outofbody.com.au/about-us/
  * License:           Use and modification permitted, no redistribution (see LICENSE)
  * License URI:       LICENSE
  * Text Domain:       oobj-search
