@@ -53,7 +53,7 @@ class NoticeTest extends OOBJ_SEARCH_TestCase {
 
 		$html = $this->notice()->html();
 
-		$this->assertStringContainsString( '<details class="oobj-search-notice__by"><summary class="oobj-search-notice__label oobj-search-notice__label--by">Search by</summary>', $html );
+		$this->assertStringContainsString( '<details class="oobj-search-notice__by"><summary class="oobj-search-notice__toggle"><span class="oobj-search-notice__toggle-label">Search by</span> <span class="oobj-search-notice__toggle-hint">material, fitting, gauge, price</span></summary>', $html );
 		$this->assertStringContainsString( 'href="' . esc_url( $this->notice()->search_url( 'titanium spiral' ) ) . '" aria-label="Titanium, 6 products">Titanium</a>', $html, 'A value most of them have' );
 		$this->assertStringContainsString( 'aria-label="Threadless, 3 products">Threadless</a>', $html );
 		$this->assertMatchesRegularExpression( '#>16g <span class="oobj-search-panel__detail">1.2mm</span></a></li><li><a [^>]*>14g <span class="oobj-search-panel__detail">1.6mm</span></a>#', $html, 'Gauges thinnest first, with mm' );

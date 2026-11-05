@@ -154,8 +154,9 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 			return '';
 		}
 
-		$facts  = $this->suggestions->facts_of( $ids );
-		$groups = '';
+		$headings = array();
+		$facts    = $this->suggestions->facts_of( $ids );
+		$groups   = '';
 		foreach ( OOBJ_SEARCH_Examples::GROUPS as $facet => $heading ) {
 			$chips = '';
 			if ( ! empty( $query->facets[ $facet ] ) ) {
@@ -169,7 +170,10 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 					$chips .= $this->link( OOBJ_SEARCH_Suggestions::compose( $query, $facet, (string) $value ), OOBJ_SEARCH_Examples::chip_label( $facet, (string) $value ), OOBJ_SEARCH_Examples::chip_detail( $facet, (string) $value ), $count );
 				}
 			}
-			$groups .= '' === $chips ? '' : OOBJ_SEARCH_Examples::group( $facet, $heading, $chips );
+			if ( '' !== $chips ) {
+				$groups    .= OOBJ_SEARCH_Examples::group( $facet, $heading, $chips );
+				$headings[] = strtolower( $heading );
+			}
 		}
 
 		$chips = '';
@@ -187,12 +191,16 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 				}
 			}
 		}
-		$groups .= '' === $chips ? '' : OOBJ_SEARCH_Examples::group( 'price', 'Price', $chips );
+		if ( '' !== $chips ) {
+			$groups    .= OOBJ_SEARCH_Examples::group( 'price', 'Price', $chips );
+			$headings[] = 'price';
+		}
 
 		return '' === $groups ? '' : sprintf(
-			'<details class="oobj-search-notice__by"><summary class="oobj-search-notice__label oobj-search-notice__label--by">%1$s</summary><div class="oobj-search-notice__groups">%2$s</div></details>',
+			'<details class="oobj-search-notice__by"><summary class="oobj-search-notice__toggle"><span class="oobj-search-notice__toggle-label">%1$s</span> <span class="oobj-search-notice__toggle-hint">%3$s</span></summary><div class="oobj-search-notice__groups">%2$s</div></details>',
 			esc_html__( 'Search by', 'oobj-search' ),
-			$groups
+			$groups,
+			esc_html( implode( ', ', $headings ) )
 		);
 	}
 
