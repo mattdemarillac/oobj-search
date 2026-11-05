@@ -57,7 +57,8 @@ class OOBJ_SEARCH_Search implements OOBJ_SEARCH_Module {
 	}
 
 	/**
-	 * This request's search, once understood: query, relaxed (the kinds let go) and found (anything at all).
+	 * This request's product search: query (understood or not), relaxed (the kinds let go) and found (anything at all,
+	 * once understood; true for a plain search).
 	 *
 	 * @return array{query: OOBJ_SEARCH_Query, relaxed: string[], found: bool}|null
 	 */
@@ -88,7 +89,12 @@ class OOBJ_SEARCH_Search implements OOBJ_SEARCH_Module {
 			return;
 		}
 
-		$understood = $this->parser->parse( (string) $query->get( 's' ) );
+		$understood    = $this->parser->parse( (string) $query->get( 's' ) );
+		$this->current = array(
+			'query'   => $understood,
+			'relaxed' => array(),
+			'found'   => true,
+		);
 		if ( ! $understood->understood() || null !== $understood->product_number ) {
 			return;
 		}
@@ -296,7 +302,7 @@ class OOBJ_SEARCH_Search implements OOBJ_SEARCH_Module {
 	 * @param string $search The search WordPress has.
 	 */
 	public function typed( $search ): string {
-		return null === $this->current ? (string) $search : $this->current['query']->text;
+		return null === $this->current || ! $this->current['query']->understood() ? (string) $search : $this->current['query']->text;
 	}
 
 	/**

@@ -72,28 +72,50 @@ class OOBJ_SEARCH_Command {
 			return;
 		}
 
-		$resolved = $this->search->resolve(
-			$query,
-			array(
-				'post_type'   => 'product',
-				'post_status' => 'publish',
-			)
+		list( $count, $relaxed ) = $this->count( $query );
+		if ( $relaxed ) {
+			WP_CLI::log( 'Nothing matched all of it; left out: ' . implode( ', ', $relaxed ) );
+		}
+		WP_CLI::log( sprintf( 'Finds %d products.', $count ) );
+	}
+
+	/**
+	 * How many products each of the search form's example searches finds (OOBJ_SEARCH_Examples).
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp oobj-search examples
+	 */
+	public function examples(): void {
+		foreach ( OOBJ_SEARCH_Examples::EXAMPLES as $example ) {
+			list( $count, $relaxed ) = $this->count( $this->parser->parse( $example ) );
+			WP_CLI::log( sprintf( '%-32s %4d products%s', $example, $count, $relaxed ? ' (leaving out ' . implode( ', ', $relaxed ) . ')' : '' ) );
+		}
+	}
+
+	/**
+	 * How many published products a query finds, and what it had to leave out to find any.
+	 *
+	 * @param OOBJ_SEARCH_Query $query The query, understood.
+	 * @return array{0: int, 1: string[]}
+	 */
+	private function count( OOBJ_SEARCH_Query $query ): array {
+		$vars     = array(
+			'post_type'   => 'product',
+			'post_status' => 'publish',
 		);
-		$count    = new WP_Query(
+		$resolved = $this->search->resolve( $query, $vars );
+		$found    = new WP_Query(
 			array_merge(
+				$vars,
 				array(
-					'post_type'      => 'product',
-					'post_status'    => 'publish',
 					'fields'         => 'ids',
 					'posts_per_page' => 1,
 				),
 				$resolved['args']
 			)
 		);
-		if ( $resolved['relaxed'] ) {
-			WP_CLI::log( 'Nothing matched all of it; left out: ' . implode( ', ', $resolved['relaxed'] ) );
-		}
-		WP_CLI::log( sprintf( 'Finds %d products.', $count->found_posts ) );
+		return array( $found->found_posts, $resolved['relaxed'] );
 	}
 
 	/**

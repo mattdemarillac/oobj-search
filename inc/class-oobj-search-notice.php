@@ -11,7 +11,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * What the search understood, above the results: each part as a link that searches again without it ("Titanium ×"),
- * and, when nothing matched all of it, which parts the results leave out. Put in front of the product collection on
+ * and, when nothing matched all of it, which parts the results leave out. Then searches to try next
+ * (OOBJ_SEARCH_Suggestions), which show what else the search understands, for plain searches too. Put in front of the product collection on
  * product search pages; a theme can place it elsewhere (html()) and turn this off (the oobj_search_show_notice filter).
  * Unstyled beyond its class names: the theme styles it.
  */
@@ -24,12 +25,21 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 	 */
 	private $search;
 
-	public function __construct( OOBJ_SEARCH_Search $search ) {
-		$this->search = $search;
+	/**
+	 * Searches to try next.
+	 *
+	 * @var OOBJ_SEARCH_Suggestions
+	 */
+	private $suggestions;
+
+	public function __construct( OOBJ_SEARCH_Search $search, OOBJ_SEARCH_Suggestions $suggestions ) {
+		$this->search      = $search;
+		$this->suggestions = $suggestions;
 	}
 
 	public function register(): void {
-		add_filter( 'render_block_woocommerce/product-collection', array( $this, 'before_results' ) );
+		// After WooCommerce's own, which puts the store notices inside the first element of the collection's output.
+		add_filter( 'render_block_woocommerce/product-collection', array( $this, 'before_results' ), 99 );
 	}
 
 	/**
@@ -45,18 +55,30 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 	}
 
 	/**
-	 * The notice, or '' when the search wasn't understood.
+	 * The notice, or '' on other pages and when there's nothing to say.
 	 */
 	public function html(): string {
 		$current = $this->search->current();
-		if ( null === $current ) {
+		if ( null === $current || ! $current['found'] ) {
 			return '';
 		}
 
-		$query   = $current['query'];
-		$relaxed = $current['relaxed'];
-		$items   = '';
-		$left    = array();
+		$query = $current['query'];
+		$html  = $query->understood() ? $this->understood( $query, $current['relaxed'] ) : '';
+		$ids   = $this->found_ids();
+		$html .= $this->suggestions_html( $this->suggestions->suggest( $query, $ids ) );
+		return '' === $html ? '' : '<div class="oobj-search-notice" role="status">' . $html . '</div>';
+	}
+
+	/**
+	 * What was understood, each part a link to search without it, and what the results leave out.
+	 *
+	 * @param OOBJ_SEARCH_Query $query   The query.
+	 * @param string[]          $relaxed Kinds let go.
+	 */
+	private function understood( OOBJ_SEARCH_Query $query, array $relaxed ): string {
+		$items = '';
+		$left  = array();
 		foreach ( $query->parts as $index => $part ) {
 			$is_off = in_array( $part['kind'], $relaxed, true );
 			if ( $is_off ) {
@@ -76,21 +98,69 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 			$left[] = sprintf( __( '“%s”', 'oobj-search' ), $query->keywords );
 		}
 
-		$note = '';
-		if ( $current['found'] && $left ) {
-			$note = sprintf(
-				'<p class="oobj-search-notice__left-out">%s</p>',
-				/* translators: %s: the parts of the search left out, e.g. "Titanium, Under $5". */
-				esc_html( sprintf( __( 'Nothing matched all of that, so these results leave out: %s.', 'oobj-search' ), implode( ', ', $left ) ) )
-			);
-		}
+		$note = $left ? sprintf(
+			'<p class="oobj-search-notice__left-out">%s</p>',
+			/* translators: %s: the parts of the search left out, e.g. "Titanium, Under $5". */
+			esc_html( sprintf( __( 'Nothing matched all of that, so these results leave out: %s.', 'oobj-search' ), implode( ', ', $left ) ) )
+		) : '';
 
 		return sprintf(
-			'<div class="oobj-search-notice" role="status"><p class="oobj-search-notice__label">%1$s</p><ul class="oobj-search-notice__parts">%2$s</ul>%3$s</div>',
+			'<p class="oobj-search-notice__label">%1$s</p><ul class="oobj-search-notice__parts">%2$s</ul>%3$s',
 			esc_html__( 'Showing:', 'oobj-search' ),
 			$items,
 			$note
 		);
+	}
+
+	/**
+	 * Searches to try next, each with how many products it finds.
+	 *
+	 * @param array<int, array{text: string, kind: string, count: int}> $suggestions The searches.
+	 */
+	private function suggestions_html( array $suggestions ): string {
+		if ( ! $suggestions ) {
+			return '';
+		}
+		$items = '';
+		foreach ( $suggestions as $suggestion ) {
+			$items .= sprintf(
+				'<li><a class="oobj-search-notice__suggestion oobj-search-notice__suggestion--%1$s" href="%2$s">%3$s <span class="oobj-search-notice__count">%4$s</span></a></li>',
+				esc_attr( $suggestion['kind'] ),
+				esc_url( $this->search_url( $suggestion['text'] ) ),
+				esc_html( $suggestion['text'] ),
+				/* translators: %d: how many products a search finds. */
+				esc_html( sprintf( _n( '%d product', '%d products', $suggestion['count'], 'oobj-search' ), $suggestion['count'] ) )
+			);
+		}
+		return sprintf(
+			'<p class="oobj-search-notice__label oobj-search-notice__label--try">%1$s</p><ul class="oobj-search-notice__suggestions">%2$s</ul>',
+			esc_html__( 'Try:', 'oobj-search' ),
+			$items
+		);
+	}
+
+	/**
+	 * Every product the main query found, not only this page's.
+	 *
+	 * @return int[]
+	 */
+	private function found_ids(): array {
+		global $wp_query;
+		$found = new WP_Query(
+			array_merge(
+				$wp_query->query_vars,
+				array(
+					'fields'                 => 'ids',
+					'posts_per_page'         => -1,
+					'nopaging'               => true,
+					'paged'                  => 1,
+					'no_found_rows'          => true,
+					'update_post_meta_cache' => false,
+					'update_post_term_cache' => false,
+				)
+			)
+		);
+		return array_map( 'intval', $found->posts );
 	}
 
 	/**

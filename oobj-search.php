@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Out Of Body Search
  * Description:       Product search that understands what shoppers mean: "titanium threadless septum 16g under $10" finds titanium, threadless, 16 gauge septum jewellery up to $10, and says what it understood.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 6.6
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -20,7 +20,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 define( 'OOBJ_SEARCH_FILE', __FILE__ );
-define( 'OOBJ_SEARCH_VERSION', '0.1.0' );
+define( 'OOBJ_SEARCH_VERSION', '0.2.0' );
 
 /*
  * Classes: OOBJ_SEARCH_Foo_Bar lives in inc/class-oobj-search-foo-bar.php (interfaces in interface-oobj-search-*.php).

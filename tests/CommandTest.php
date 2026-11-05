@@ -58,6 +58,15 @@ class CommandTest extends OOBJ_SEARCH_TestCase {
 		$this->assertStringContainsString( 'A product number: goes to the product with SKU or ID 966.', $this->printed() );
 	}
 
+	public function test_examples_says_what_each_finds() {
+		$this->product( 'Titanium Nose Ring', 6, array( 'nose' ) );
+
+		$this->command()->examples();
+
+		$this->assertMatchesRegularExpression( '/titanium nose ring under \$10\s+1 products/', $this->printed() );
+		$this->assertMatchesRegularExpression( '/16g septum clicker\s+1 products \(leaving out [a-z, ]+\)/', $this->printed() );
+	}
+
 	public function test_index_works_out_every_products_facts() {
 		$product = $this->product( 'Titanium Ring', 6 );
 		wp_delete_object_term_relationships( $product->get_id(), OOBJ_SEARCH_Facts::TAXONOMY );

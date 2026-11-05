@@ -404,6 +404,24 @@ class OOBJ_SEARCH_Vocabulary {
 	}
 
 	/**
+	 * The words a shopper would type for a value, so a suggested search reads naturally: material titanium is
+	 * "titanium", gauge 1.2 is "16g", size 8 is "8mm". A concept's first phrase.
+	 *
+	 * @param string $facet A facet.
+	 * @param string $value Its value.
+	 */
+	public static function phrase( string $facet, string $value ): string {
+		if ( 'gauge' === $facet ) {
+			$gauge = array_search( $value, self::GAUGES, true );
+			return false === $gauge ? $value . 'mm' : $gauge . 'g';
+		}
+		if ( 'size' === $facet ) {
+			return $value . 'mm';
+		}
+		return (string) ( self::CONCEPTS[ $facet ][ $value ]['phrases'][0] ?? $value );
+	}
+
+	/**
 	 * A thickness in mm as the vocabulary writes it: "1.20" and "1.2" are "1.2", "8.0" is "8".
 	 *
 	 * @param string $mm A number of mm.

@@ -30,7 +30,8 @@ class SearchTest extends OOBJ_SEARCH_TestCase {
 		$query = $this->search( 'spiral' );
 
 		$this->assertSame( array( 'Spiral Twist Barbell' ), $this->names( $query ) );
-		$this->assertNull( $this->search_service()->current() );
+		$this->assertFalse( $this->search_service()->current()['query']->understood() );
+		$this->assertSame( 'spiral', get_search_query( false ) );
 	}
 
 	public function test_a_category_finds_its_products_and_its_subcategories() {

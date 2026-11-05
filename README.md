@@ -9,6 +9,9 @@ A WooCommerce plugin for outofbody.com.au: the shop's product search understands
 - **The search** (`inc/class-oobj-search-search.php`) narrows the main query of a product search (`?s=…&post_type=product`): every category named, the facts (alternatives within a facet, all facets), the price from WooCommerce's product lookup table (a variable product counts when any variation is in range), price order for "cheap". Products hidden from search stay hidden. When nothing matches, parts are let go in order (words, theme, colour, size, gauge, fitting, material, order, price, category) until something does, then each is put back if results remain. A query that's only a product number goes to that product. Searches that still find nothing are logged (WooCommerce → Status → Logs, source `oobj-search`).
 - **The notice** (`inc/class-oobj-search-notice.php`) puts what was understood in front of the product collection; the theme styles it (the `oob` theme's `OOB_Oobj_Search` adapter). A theme can place it itself with `oobj_search( OOBJ_SEARCH_Notice::class )->html()` and the `oobj_search_show_notice` filter.
 
+- **Searches to try next** (`inc/class-oobj-search-suggestions.php`), in the notice, for plain searches too: each adds something of a different kind (a material, a price, a colour, a fitting, a theme, a gauge, cheapest first) that the found products have, preferring one that keeps about a third of them, with how many products it finds. "nose ring" offers "titanium nose ring", "nose ring under $5", "rose gold nose ring", "threadless nose ring", "floral nose ring". Two queries when the page is built.
+- **Example searches** (`inc/class-oobj-search-examples.php`) inside every product search form (the Search block set to products), hidden: eight that between them use everything the search understands. The theme shows them while the field has focus (the `oob` theme: four, in a different order on each page). `wp oobj-search examples` counts what each finds.
+
 Nothing is stored per search, and search pages stay the same URLs, so the page cache treats them as before.
 
 ## WP-CLI
@@ -17,6 +20,7 @@ Nothing is stored per search, and search pages stay the same URLs, so the page c
 wp oobj-search explain "cheap titanium nose ring"   # what it means and how many products it finds
 wp oobj-search index                                # work out every product's facts now
 wp oobj-search coverage                             # products with each kind of fact, facts kept
+wp oobj-search examples                             # what each example search finds
 ```
 
 ## Development
