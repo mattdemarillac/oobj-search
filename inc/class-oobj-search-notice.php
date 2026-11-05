@@ -183,7 +183,7 @@ class OOBJ_SEARCH_Notice implements OOBJ_SEARCH_Module {
 			foreach ( OOBJ_SEARCH_Suggestions::PRICES as $price ) {
 				if ( $under[ $price ] >= OOBJ_SEARCH_Suggestions::MIN_FOUND && $under[ $price ] < $total ) {
 					/* translators: %d: a price in dollars. */
-					$chips .= $this->link( $query->normalised . ' under $' . $price, sprintf( __( 'Under $%d', 'oobj-search' ), $price ), '', $under[ $price ] );
+					$chips .= $this->link( trim( $query->normalised . ' under $' . $price ), sprintf( __( 'Under $%d', 'oobj-search' ), $price ), '', $under[ $price ] );
 				}
 			}
 		}

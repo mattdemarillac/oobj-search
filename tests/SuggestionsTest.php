@@ -193,11 +193,20 @@ class SuggestionsTest extends OOBJ_SEARCH_TestCase {
 		$this->assertSame( $queries, $wpdb->num_queries );
 	}
 
-	public function test_nothing_for_few_results_or_no_words() {
+	public function test_nothing_for_few_results() {
 		$ids = $this->rings();
 
 		$this->assertSame( array(), $this->suggestions()->suggest( $this->parse( 'ring' ), array_slice( $ids, 0, 5 ) ) );
-		$this->assertSame( array(), $this->suggestions()->suggest( $this->parse( '' ), $ids ) );
+	}
+
+	public function test_an_empty_search_gets_suggestions_too() {
+		$texts = $this->texts( $this->suggestions()->suggest( $this->parse( '' ), $this->rings() ) );
+
+		$this->assertNotEmpty( $texts );
+		$this->assertSame( 'titanium', $texts['material'] );
+		foreach ( $texts as $text ) {
+			$this->assertSame( trim( $text ), $text );
+		}
 	}
 
 	public function test_a_fact_a_search_cant_name_isnt_suggested() {

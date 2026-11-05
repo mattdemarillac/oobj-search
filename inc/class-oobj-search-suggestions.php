@@ -107,7 +107,7 @@ class OOBJ_SEARCH_Suggestions {
 	 */
 	public function suggest( OOBJ_SEARCH_Query $query, array $ids ): array {
 		$total = count( $ids );
-		if ( $total < self::MIN_RESULTS || '' === $query->normalised ) {
+		if ( $total < self::MIN_RESULTS ) {
 			return array();
 		}
 
@@ -124,6 +124,8 @@ class OOBJ_SEARCH_Suggestions {
 				continue;
 			}
 			unset( $candidate['score'] );
+			// An empty search (the last part removed) gets suggestions too: "titanium", "under $10".
+			$candidate['text']            = trim( $candidate['text'] );
 			$chosen[ $candidate['kind'] ] = $candidate;
 			if ( count( $chosen ) === self::MAX ) {
 				break;
