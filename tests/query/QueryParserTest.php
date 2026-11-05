@@ -52,7 +52,7 @@ class QueryParserTest extends TestCase {
 	public function test_the_example() {
 		$this->assertSame(
 			array(
-				'sort:price:Cheapest first:cheap',
+				'sort:price:Lowest price first:cheap',
 				'material:titanium:Titanium:titanium',
 				'fitting:threadless:Threadless (push pin):threadless',
 				'category:septum-daith-clickers-and-rings:Septum:septum',
@@ -238,7 +238,7 @@ class QueryParserTest extends TestCase {
 		$this->assertSame( array( 'sort' => 'price' ), self::read( 'cheapest' ) );
 		$this->assertSame( array( 'sort' => 'price' ), self::read( 'price low to high' ) );
 		$this->assertSame( array( 'sort' => 'price-desc' ), self::read( 'Most expensive' ) );
-		$this->assertSame( array( 'sort:price-desc:Most expensive first:most expensive' ), self::parts( 'most expensive' ) );
+		$this->assertSame( array( 'sort:price-desc:Highest price first:most expensive' ), self::parts( 'most expensive' ) );
 		// The first sort in the query wins; both are parts.
 		$this->assertSame( array( 'sort' => 'price-desc' ), self::read( 'expensive cheap' ) );
 		$this->assertCount( 2, self::parts( 'expensive cheap' ) );

@@ -27,7 +27,7 @@ class OOBJ_SEARCH_Examples implements OOBJ_SEARCH_Module {
 		'titanium nose ring under $10',
 		'16g septum clicker',
 		'threadless rose gold earrings',
-		'cheap black tongue bars',
+		'black tongue bars lowest price first',
 		'silicone tunnels 10mm',
 		'heart nipple bars',
 		'black or gold septum clicker',
@@ -60,10 +60,10 @@ class OOBJ_SEARCH_Examples implements OOBJ_SEARCH_Module {
 	 * Price buttons: words added => label.
 	 */
 	const PRICES = array(
-		'under $5'  => 'Under $5',
-		'under $10' => 'Under $10',
-		'under $20' => 'Under $20',
-		'cheapest'  => 'Cheapest first',
+		'under $5'           => 'Under $5',
+		'under $10'          => 'Under $10',
+		'under $20'          => 'Under $20',
+		'lowest price first' => 'Lowest price first',
 	);
 
 	/**

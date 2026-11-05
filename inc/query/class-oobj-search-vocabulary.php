@@ -359,9 +359,9 @@ class OOBJ_SEARCH_Vocabulary {
 	/**
 	 * Phrases that mean "sort by price, lowest first" (or highest, for PRICE_HIGH_PHRASES).
 	 */
-	const PRICE_LOW_PHRASES = array( 'cheap', 'cheaper', 'cheapest', 'budget', 'affordable', 'inexpensive', 'low price', 'low cost', 'lowest price', 'bargain', 'bargains', 'cheap as', 'low to high', 'price low to high', 'cheapest first' );
+	const PRICE_LOW_PHRASES = array( 'cheap', 'cheaper', 'cheapest', 'budget', 'affordable', 'inexpensive', 'low price', 'low cost', 'lowest price', 'bargain', 'bargains', 'cheap as', 'low to high', 'price low to high', 'cheapest first', 'lowest price first', 'lowest first' );
 
-	const PRICE_HIGH_PHRASES = array( 'expensive', 'premium', 'luxury', 'high end', 'most expensive', 'high to low', 'price high to low', 'priciest' );
+	const PRICE_HIGH_PHRASES = array( 'expensive', 'premium', 'luxury', 'high end', 'most expensive', 'high to low', 'price high to low', 'priciest', 'highest price first', 'highest first' );
 
 	/**
 	 * Words that carry no meaning for a product search once the rest is understood.

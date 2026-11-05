@@ -552,7 +552,7 @@ final class OOBJ_SEARCH_Query_Parser {
 			} elseif ( 'sort' === $span['kind'] ) {
 				$query->sort = $query->sort ?? $span['value'];
 				$value       = $span['value'];
-				$label       = 'price' === $value ? 'Cheapest first' : 'Most expensive first';
+				$label       = 'price' === $value ? 'Lowest price first' : 'Highest price first';
 			} else {
 				$value = $span['value'];
 				$label = OOBJ_SEARCH_Vocabulary::label( $span['kind'], $value );

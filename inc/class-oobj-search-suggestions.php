@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * - demand: how much shoppers search for it (OOBJ_SEARCH_Vocabulary::DEMAND): titanium, threadless, opal, rose gold;
  * - share: it keeps a useful part of the results, ideally IDEAL_SHARE, never all of them or fewer than MIN_FOUND;
  * - season: in season (OOBJ_SEARCH_Vocabulary::SEASONS), spooky or Christmas things are favoured.
- * A price limit and cheapest first are candidates too. The best are offered, at most one of each kind, at most MAX.
+ * A price limit and lowest price first are candidates too. The best are offered, at most one of each kind, at most MAX.
  * Counted with three small queries when the search page is built (search pages are cached).
  */
 class OOBJ_SEARCH_Suggestions {
@@ -58,7 +58,7 @@ class OOBJ_SEARCH_Suggestions {
 	const SEASON_BOOST = 3;
 
 	/**
-	 * Fixed weights for the kinds that aren't facts: a price limit is a strong showcase, cheapest first a fallback.
+	 * Fixed weights for the kinds that aren't facts: a price limit is a strong showcase, lowest price first a fallback.
 	 */
 	const PRICE_WEIGHT = 2.5;
 
@@ -290,7 +290,8 @@ class OOBJ_SEARCH_Suggestions {
 	}
 
 	/**
-	 * The query cheapest first ("cheapest nose ring"), when it isn't already in an order.
+	 * The query lowest price first ("nose ring lowest price first"), when it isn't already in an order. Shown to
+	 * shoppers, so never "cheap" or "cheapest", though the search understands them.
 	 *
 	 * @param OOBJ_SEARCH_Query $query What was searched.
 	 * @param int               $total How many products it found.
@@ -301,7 +302,7 @@ class OOBJ_SEARCH_Suggestions {
 			return null;
 		}
 		return array(
-			'text'  => 'cheapest ' . $query->normalised,
+			'text'  => trim( $query->normalised . ' lowest price first' ),
 			'kind'  => 'sort',
 			'count' => $total,
 			'score' => self::SORT_WEIGHT,

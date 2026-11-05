@@ -48,7 +48,7 @@ sample of 272 with expected facts (`ProductFactsFixtureTest`): add a product the
 | `MAX_LIFT` | 4 | Cap on how much more common among the results than in the shop counts. |
 | `SEASON_BOOST` | 3 | In-season values' score multiplier. |
 | `PRICES` | 5, 8, 10, 15, 20 | Price limits offered. |
-| `PRICE_WEIGHT`, `SORT_WEIGHT` | 2.5, 0.6 | How price limits and "cheapest" score against facts. |
+| `PRICE_WEIGHT`, `SORT_WEIGHT` | 2.5, 0.6 | How price limits and "lowest price first" score against facts. Shoppers never see "cheap": the search understands it, but labels, buttons and suggestions say "lowest price". |
 | `NOUNS` | `fitting:clicker` | Values that go after the search ("septum clicker"), not before. |
 
 ## The search panel: `inc/class-oobj-search-examples.php`

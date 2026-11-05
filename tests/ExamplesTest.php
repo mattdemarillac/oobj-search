@@ -54,7 +54,12 @@ class ExamplesTest extends OOBJ_SEARCH_TestCase {
 		$this->assertStringNotContainsString( 'data-add="8mm"', $html, 'A stretching size in mm is no gauge button' );
 		$this->assertStringContainsString( '<li data-from="09-15" data-to="10-31"><button type="button" class="oobj-search-panel__chip" data-add="spooky"', $html, 'Seasonal: dated' );
 		$this->assertStringContainsString( 'data-add="under $10" aria-pressed="false">Under $10</button>', $html );
-		$this->assertStringContainsString( 'data-add="cheapest" aria-pressed="false">Cheapest first</button>', $html );
+		$this->assertStringContainsString( 'data-add="lowest price first" aria-pressed="false">Lowest price first</button>', $html );
+	}
+
+	public function test_nothing_shown_says_cheap() {
+		$this->assertDoesNotMatchRegularExpression( '/cheap/i', $this->examples()->html() );
+		$this->assertSame( 'Lowest price first', ( new OOBJ_SEARCH_Query_Parser() )->parse( 'cheapest rings' )->parts[0]['label'] );
 	}
 
 	public function test_sizes_the_most_common_smallest_first() {

@@ -67,7 +67,7 @@ final class OOBJ_SEARCH_Query {
 	/**
 	 * What was understood, in the order it appears in the query: each part's kind (a facet, 'price' or 'sort'), value
 	 * (a facet value; for price "min-max" with either side empty, e.g. "-10"; for sort the sort), label for a person
-	 * ("Titanium", "Under $10", "Cheapest first") and the words it was understood from, as they are in the normalised
+	 * ("Titanium", "Under $10", "Lowest price first") and the words it was understood from, as they are in the normalised
 	 * query.
 	 *
 	 * @var array<int, array{kind: string, value: string, label: string, words: string}>

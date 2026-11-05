@@ -168,7 +168,7 @@ class SuggestionsTest extends OOBJ_SEARCH_TestCase {
 		$this->assertSame(
 			array(
 				array(
-					'text'  => 'cheapest plain ring',
+					'text'  => 'plain ring lowest price first',
 					'kind'  => 'sort',
 					'count' => 6,
 				),
