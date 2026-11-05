@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!-- The plain-PHP part (inc/query/), without WordPress: composer test:query, on the host. -->
+<phpunit
+	bootstrap="bootstrap.php"
+	colors="true"
+	cacheResult="false"
+	beStrictAboutOutputDuringTests="true"
+	failOnRisky="true"
+	failOnWarning="true"
+	>
+	<testsuites>
+		<testsuite name="query">
+			<directory suffix="Test.php">.</directory>
+		</testsuite>
+	</testsuites>
+	<coverage>
+		<include>
+			<directory suffix=".php">../../inc/query</directory>
+		</include>
+	</coverage>
+</phpunit>

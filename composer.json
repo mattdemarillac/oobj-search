@@ -1,0 +1,35 @@
+{
+	"name": "mattdemarillac/oobj-search",
+	"description": "Out Of Body Search: product search that understands price, material, fitting, gauge, colour and placement in plain words.",
+	"type": "wordpress-plugin",
+	"license": "proprietary",
+	"require-dev": {
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.2",
+		"phpcompatibility/phpcompatibility-wp": "^2.1 || ^3.0",
+		"phpunit/phpunit": "^9.6",
+		"wp-coding-standards/wpcs": "^3.1",
+		"wp-phpunit/wp-phpunit": "~7.1.0",
+		"yoast/phpunit-polyfills": "^4.0"
+	},
+	"scripts": {
+		"test": "tests/bin/phpunit.sh",
+		"lint": "phpcs",
+		"lint:fix": "phpcbf; test $? -le 1",
+		"test:coverage": "tests/bin/coverage.sh",
+		"test:query": "vendor/bin/phpunit -c tests/query/phpunit.xml"
+	},
+	"scripts-descriptions": {
+		"test": "PHPUnit tests, in the litespeed container of the local stack (args go to PHPUnit, e.g. -- --filter Search).",
+		"lint": "Check PHP against the WordPress Coding Standards (phpcs.xml.dist).",
+		"lint:fix": "Fix what phpcbf can fix automatically.",
+		"test:coverage": "PHPUnit with code coverage (PCOV, built once into tests/coverage/); fails below 100% of lines. HTML report in tests/coverage/html/.",
+		"test:query": "The query reader, vocabulary and product facts (inc/query/, plain PHP), without WordPress: on the host, in seconds."
+	},
+	"config": {
+		"sort-packages": true,
+		"process-timeout": 0,
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	}
+}
