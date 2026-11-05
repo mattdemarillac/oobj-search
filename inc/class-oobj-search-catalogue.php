@@ -13,11 +13,12 @@ defined( 'ABSPATH' ) || exit;
  * The whole catalogue's facts: how many published products have each fact value. Suggestions compare a search's
  * results with it (what's distinctive about them), and the search panel offers the values the shop has. One query,
  * kept CACHE_TTL (a transient, in the object cache), and worked out again sooner when the way facts are worked out
- * changes (OOBJ_SEARCH_Facts::version()).
+ * changes (OOBJ_SEARCH_Facts::version()). Not kept while products' facts are being worked out in the background
+ * (they'd be counted part done), and forgotten when that finishes (OOBJ_SEARCH_Facts::index_batch()).
  */
 class OOBJ_SEARCH_Catalogue {
 
-	const CACHE_KEY = 'oobj_search_catalogue';
+	const CACHE_KEY = 'oobj_search_catalogue_2';
 
 	const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
@@ -51,6 +52,9 @@ class OOBJ_SEARCH_Catalogue {
 			'total' => $total,
 			'facts' => self::by_facet( $rows ),
 		);
+		if ( OOBJ_SEARCH_Facts::indexing() ) {
+			return $counts;
+		}
 		set_transient(
 			self::CACHE_KEY,
 			array(
@@ -60,6 +64,13 @@ class OOBJ_SEARCH_Catalogue {
 			self::CACHE_TTL
 		);
 		return $counts;
+	}
+
+	/**
+	 * Forgets the kept counts, so the next call works them out again.
+	 */
+	public static function forget(): void {
+		delete_transient( self::CACHE_KEY );
 	}
 
 	/**

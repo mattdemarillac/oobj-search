@@ -168,6 +168,18 @@ class FactsTest extends OOBJ_SEARCH_TestCase {
 		$this->assertFalse( as_next_scheduled_action( OOBJ_SEARCH_Facts::BATCH_HOOK ), 'Fewer than a batch: the last' );
 	}
 
+	public function test_the_last_batch_forgets_the_catalogue_and_says_so() {
+		as_unschedule_all_actions( OOBJ_SEARCH_Facts::BATCH_HOOK );
+		set_transient( OOBJ_SEARCH_Catalogue::CACHE_KEY, array( 'stale' ) );
+		$fired = did_action( 'oobj_search_indexed' );
+
+		$this->facts()->index_batch( PHP_INT_MAX - 1 );
+
+		$this->assertFalse( get_transient( OOBJ_SEARCH_Catalogue::CACHE_KEY ) );
+		$this->assertSame( $fired + 1, did_action( 'oobj_search_indexed' ) );
+		$this->assertFalse( OOBJ_SEARCH_Facts::indexing() );
+	}
+
 	public function test_a_full_batch_queues_the_next() {
 		$ids = array();
 		for ( $i = 0; $i < OOBJ_SEARCH_Facts::BATCH; $i++ ) {
@@ -178,6 +190,7 @@ class FactsTest extends OOBJ_SEARCH_TestCase {
 		$this->assertSame( OOBJ_SEARCH_Facts::BATCH, $this->facts()->index_batch( $ids[0] - 1 ) );
 
 		$this->assertNotFalse( as_next_scheduled_action( OOBJ_SEARCH_Facts::BATCH_HOOK, array( end( $ids ) ) ) );
+		$this->assertTrue( OOBJ_SEARCH_Facts::indexing() );
 	}
 
 	public function test_coverage_counts_products_with_each_facet() {

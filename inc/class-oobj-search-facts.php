@@ -169,7 +169,17 @@ class OOBJ_SEARCH_Facts implements OOBJ_SEARCH_Module {
 	}
 
 	/**
-	 * Works out the facts of BATCH products after the one with this ID, then queues the next batch.
+	 * Whether products' facts are being worked out in the background: a batch is queued or running.
+	 */
+	public static function indexing(): bool {
+		return false !== as_next_scheduled_action( self::BATCH_HOOK, null, 'oobj-search' );
+	}
+
+	/**
+	 * Works out the facts of BATCH products after the one with this ID, then queues the next batch. After the last,
+	 * the catalogue's counts are worked out again and oobj_search_indexed fires: pages that show what the shop has
+	 * (the search panel is in every product search form) were built from a part-done index, so a page cache should
+	 * let them go.
 	 *
 	 * @param int $after A product ID; 0 for the first batch.
 	 * @return int How many products it did.
@@ -181,6 +191,12 @@ class OOBJ_SEARCH_Facts implements OOBJ_SEARCH_Module {
 		}
 		if ( count( $ids ) === self::BATCH ) {
 			as_enqueue_async_action( self::BATCH_HOOK, array( (int) end( $ids ) ), 'oobj-search' );
+		} else {
+			OOBJ_SEARCH_Catalogue::forget();
+			/**
+			 * Fires when every product's facts have been worked out in the background.
+			 */
+			do_action( 'oobj_search_indexed' );
 		}
 		return count( $ids );
 	}
