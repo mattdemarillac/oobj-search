@@ -370,7 +370,7 @@ class OOBJ_SEARCH_Vocabulary {
 
 	/**
 	 * How much shoppers search for each fact value: site searches by count, Google searches by impressions / 50,
-	 * read with OOBJ_SEARCH_Query_Parser (November 2026). Suggestions favour what's asked for (titanium over steel,
+	 * read with OOBJ_SEARCH_Query_Parser (November 2026; rebuilt with tools/demand.php, see docs/demand.md). Suggestions favour what's asked for (titanium over steel,
 	 * threadless over externally threaded); values not listed score 0.
 	 */
 	const DEMAND = array(

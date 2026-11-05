@@ -64,4 +64,15 @@
 	<rule ref="WordPress.DB.DirectDatabaseQuery">
 		<exclude-pattern>/tests/*</exclude-pattern>
 	</rule>
+
+	<!-- tools/: command-line scripts for development, not in the plugin's release. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<exclude-pattern>/tools/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>/tools/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.EscapeOutput">
+		<exclude-pattern>/tools/*</exclude-pattern>
+	</rule>
 </ruleset>
