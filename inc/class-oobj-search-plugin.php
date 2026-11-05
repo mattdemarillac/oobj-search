@@ -25,9 +25,10 @@ class OOBJ_SEARCH_Plugin {
 		$parser      = $this->add( new OOBJ_SEARCH_Query_Parser() );
 		$facts       = $this->add( new OOBJ_SEARCH_Facts() );
 		$search      = $this->add( new OOBJ_SEARCH_Search( $parser ) );
-		$suggestions = $this->add( new OOBJ_SEARCH_Suggestions( $parser ) );
+		$catalogue   = $this->add( new OOBJ_SEARCH_Catalogue() );
+		$suggestions = $this->add( new OOBJ_SEARCH_Suggestions( $parser, $catalogue ) );
 		$notice      = $this->add( new OOBJ_SEARCH_Notice( $search, $suggestions ) );
-		$this->add( new OOBJ_SEARCH_Examples( $notice ) );
+		$this->add( new OOBJ_SEARCH_Examples( $notice, $catalogue ) );
 		$this->add(
 			new OOBJ_SEARCH_Updates(
 				new OOBJ_SEARCH_GitHub_Releases( OOBJ_SEARCH_GitHub_Releases::repo_from_url( self::header( 'Update URI' ) ), dirname( plugin_basename( OOBJ_SEARCH_FILE ) ), OOBJ_SEARCH_Updates::token() ),

@@ -369,6 +369,91 @@ class OOBJ_SEARCH_Vocabulary {
 	const STOP_WORDS = array( 'a', 'an', 'the', 'and', 'or', 'for', 'with', 'in', 'of', 'to', 'on', 'my', 'me', 'i', 'im', 'want', 'need', 'looking', 'show', 'find', 'some', 'any', 'options', 'option', 'item', 'items', 'product', 'products', 'jewellery', 'jewelry', 'jewelery', 'jewlery', 'jewllery', 'jewerly', 'body', 'piercing', 'piercings', 'pierced', 'buy', 'shop', 'online', 'australia', 'aus', 'au', 'please', 'that', 'are', 'is', 'which', 'what', 'good', 'nice', 'new', 'one', 'ones', 'pair', 'pairs', 'set', 'sets', 'type', 'style', 'styles', 'this', 'it', 'its', 'w', 'x', 'price', 'prices' );
 
 	/**
+	 * How much shoppers search for each fact value: site searches by count, Google searches by impressions / 50,
+	 * read with OOBJ_SEARCH_Query_Parser (November 2026). Suggestions favour what's asked for (titanium over steel,
+	 * threadless over externally threaded); values not listed score 0.
+	 */
+	const DEMAND = array(
+		'material' => array(
+			'titanium'        => 263,
+			'bioplast'        => 93,
+			'acrylic'         => 45,
+			'silicone'        => 26,
+			'surgical-steel'  => 8,
+			'sterling-silver' => 1,
+			'glass'           => 1,
+		),
+		'fitting'  => array(
+			'threadless'          => 561,
+			'internally-threaded' => 73,
+			'clicker'             => 48,
+			'hinged'              => 10,
+		),
+		'colour'   => array(
+			'opal'      => 68,
+			'rose-gold' => 61,
+			'black'     => 57,
+			'pink'      => 32,
+			'gold'      => 28,
+			'green'     => 24,
+			'rainbow'   => 21,
+			'aqua'      => 12,
+			'blue'      => 6,
+			'white'     => 5,
+			'clear'     => 2,
+		),
+		'theme'    => array(
+			'celestial' => 140,
+			'animal'    => 89,
+			'floral'    => 34,
+			'heart'     => 23,
+			'spooky'    => 22,
+		),
+		'gauge'    => array(
+			'2'   => 41,
+			'1.2' => 27,
+			'0.8' => 26,
+			'1'   => 24,
+			'1.6' => 15,
+			'1.5' => 7,
+			'2.5' => 4,
+		),
+	);
+
+	/**
+	 * Seasons, as month-day ranges in the shop's year (Australia): spooky things before Halloween, Christmas things
+	 * before Christmas. In season, their facts and categories are favoured in suggestions and the search panel, and
+	 * their examples shown first.
+	 */
+	const SEASONS = array(
+		'halloween' => array(
+			'from'     => '09-15',
+			'to'       => '10-31',
+			'facet'    => 'theme',
+			'value'    => 'spooky',
+			'examples' => array( 'spooky earrings under $10' ),
+		),
+		'christmas' => array(
+			'from'     => '11-01',
+			'to'       => '12-25',
+			'facet'    => 'category',
+			'value'    => 'christmas-jewellery',
+			'examples' => array( 'christmas earrings' ),
+		),
+	);
+
+	/**
+	 * The seasons a date is in.
+	 *
+	 * @param DateTimeInterface $date A date.
+	 * @return string[] Season names (keys of SEASONS).
+	 */
+	public static function seasons( DateTimeInterface $date ): array {
+		$today = $date->format( 'm-d' );
+		return array_keys( array_filter( self::SEASONS, fn( $season ) => $today >= $season['from'] && $today <= $season['to'] ) );
+	}
+
+	/**
 	 * Every phrase of a facet with what it means, longest first.
 	 *
 	 * @param string $facet One of FACETS with concepts.

@@ -11,28 +11,21 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Searches to try next, built from what was searched and what it found, so shoppers see what else the search
- * understands: each adds something of a different kind (a material, a fitting, a gauge, a colour, a theme, a price,
- * cheapest first) that the found products have. "nose ring" offers "titanium nose ring", "threadless nose ring",
- * "16g nose ring", "nose ring under $10"… each with how many products it finds, and only when it narrows the results.
+ * understands and what this part of the shop has. "nose ring" offers "titanium nose ring", "threadless nose ring",
+ * "nose ring under $10"…, each with how many products it finds.
  *
- * Counted from the found products' facts (OOBJ_SEARCH_Facts) and prices (WooCommerce's product lookup table), with
- * two queries, when the search page is built (search pages are cached). Of each kind, the value that keeps closest to
- * IDEAL_SHARE of the results, which shows the search off better than the most common one.
+ * Every fact value the found products have (OOBJ_SEARCH_Facts) is a candidate, scored by:
+ * - distinctiveness: how much more common it is among these results than in the whole shop (OOBJ_SEARCH_Catalogue),
+ *   so spooky things suggest black, not what every product is;
+ * - demand: how much shoppers search for it (OOBJ_SEARCH_Vocabulary::DEMAND): titanium, threadless, opal, rose gold;
+ * - share: it keeps a useful part of the results, ideally IDEAL_SHARE, never all of them or fewer than MIN_FOUND;
+ * - season: in season (OOBJ_SEARCH_Vocabulary::SEASONS), spooky or Christmas things are favoured.
+ * A price limit and cheapest first are candidates too. The best are offered, at most one of each kind, at most MAX.
+ * Counted with three small queries when the search page is built (search pages are cached).
  */
 class OOBJ_SEARCH_Suggestions {
 
-	/**
-	 * The kinds of suggestion, in the order offered: one of each, at most MAX.
-	 */
-	const KINDS = array( 'material', 'price', 'colour', 'fitting', 'theme', 'gauge', 'sort' );
-
 	const MAX = 5;
-
-	/**
-	 * The share of the found products a suggestion should ideally keep: one that picks out some of them shows more
-	 * than one most of them have ("titanium nose ring" over "surgical steel nose ring").
-	 */
-	const IDEAL_SHARE = 0.3;
 
 	/**
 	 * Fewer results than this need no narrowing.
@@ -45,9 +38,31 @@ class OOBJ_SEARCH_Suggestions {
 	const MIN_FOUND = 3;
 
 	/**
+	 * The share of the results a suggestion should ideally keep.
+	 */
+	const IDEAL_SHARE = 0.3;
+
+	/**
 	 * Prices to offer "under" (the shop's prices are mostly under $15).
 	 */
 	const PRICES = array( 5, 8, 10, 15, 20 );
+
+	/**
+	 * Distinctiveness counts up to this many times as common as in the whole shop.
+	 */
+	const MAX_LIFT = 4;
+
+	/**
+	 * How much more an in-season value scores.
+	 */
+	const SEASON_BOOST = 3;
+
+	/**
+	 * Fixed weights for the kinds that aren't facts: a price limit is a strong showcase, cheapest first a fallback.
+	 */
+	const PRICE_WEIGHT = 2.5;
+
+	const SORT_WEIGHT = 0.6;
 
 	/**
 	 * Reads queries.
@@ -56,8 +71,24 @@ class OOBJ_SEARCH_Suggestions {
 	 */
 	private $parser;
 
-	public function __construct( OOBJ_SEARCH_Query_Parser $parser ) {
-		$this->parser = $parser;
+	/**
+	 * The whole shop's facts.
+	 *
+	 * @var OOBJ_SEARCH_Catalogue
+	 */
+	private $catalogue;
+
+	/**
+	 * The date seasons are judged by.
+	 *
+	 * @var DateTimeInterface
+	 */
+	private $today;
+
+	public function __construct( OOBJ_SEARCH_Query_Parser $parser, OOBJ_SEARCH_Catalogue $catalogue, ?DateTimeInterface $today = null ) {
+		$this->parser    = $parser;
+		$this->catalogue = $catalogue;
+		$this->today     = $today ?? current_datetime();
 	}
 
 	/**
@@ -73,59 +104,162 @@ class OOBJ_SEARCH_Suggestions {
 			return array();
 		}
 
-		$facts       = $this->fact_counts( $ids );
-		$suggestions = array();
-		foreach ( self::KINDS as $kind ) {
-			$suggestion = 'price' === $kind ? $this->price( $query, $ids, $total ) : ( 'sort' === $kind ? $this->sort( $query, $total ) : $this->fact( $query, $kind, $facts[ $kind ] ?? array(), $total ) );
-			if ( null !== $suggestion ) {
-				$suggestions[] = $suggestion;
+		$candidates = array_merge(
+			$this->facts( $query, $this->fact_counts( $ids ), $total ),
+			$this->seasonal_categories( $query, $ids, $total ),
+			array_filter( array( $this->price( $query, $ids, $total ), $this->sort( $query, $total ) ) )
+		);
+		usort( $candidates, fn( $a, $b ) => $b['score'] <=> $a['score'] ?: strcmp( $a['text'], $b['text'] ) );
+
+		$chosen = array();
+		foreach ( $candidates as $candidate ) {
+			if ( isset( $chosen[ $candidate['kind'] ] ) ) {
+				continue;
 			}
-			if ( count( $suggestions ) === self::MAX ) {
+			unset( $candidate['score'] );
+			$chosen[ $candidate['kind'] ] = $candidate;
+			if ( count( $chosen ) === self::MAX ) {
 				break;
 			}
 		}
-		return $suggestions;
+		return array_values( $chosen );
 	}
 
 	/**
-	 * The query with a fact added in front ("titanium nose ring"), for the fact the found products most often have
-	 * that leaves fewer of them, when the query doesn't name that kind already.
+	 * The query with a value's words added where a person would put them: before it ("titanium nose ring"), after it
+	 * for a noun ("septum clicker") or when it starts with a theme or colour ("spooky black"), and before a price at its
+	 * end ("pink belly bars under $10").
 	 *
-	 * @param OOBJ_SEARCH_Query  $query  What was searched.
-	 * @param string             $facet  A fact facet.
-	 * @param array<string, int> $counts Its values among the found products, most common first.
-	 * @param int                $total  How many products were found.
-	 * @return array{text: string, kind: string, count: int}|null
+	 * @param OOBJ_SEARCH_Query $query What was searched.
+	 * @param string            $facet The value's facet.
+	 * @param string            $value The value.
 	 */
-	private function fact( OOBJ_SEARCH_Query $query, string $facet, array $counts, int $total ): ?array {
-		if ( ! empty( $query->facets[ $facet ] ) ) {
-			return null;
+	public static function compose( OOBJ_SEARCH_Query $query, string $facet, string $value ): string {
+		$base = $query->normalised;
+		$tail = '';
+		$last = end( $query->parts );
+		if ( $last && 'price' === $last['kind'] && str_ends_with( $base, ' ' . $last['words'] ) ) {
+			$base = substr( $base, 0, -strlen( $last['words'] ) - 1 );
+			$tail = ' ' . $last['words'];
 		}
-		// Closest to the ideal share first.
-		uasort( $counts, fn( $a, $b ) => abs( $a / $total - self::IDEAL_SHARE ) <=> abs( $b / $total - self::IDEAL_SHARE ) );
-		foreach ( $counts as $value => $count ) {
-			if ( $count < self::MIN_FOUND || $count >= $total ) {
+		$words = OOBJ_SEARCH_Vocabulary::phrase( $facet, $value );
+		$first = reset( $query->parts );
+		$after = in_array( $facet . ':' . $value, self::NOUNS, true ) || ( $first && in_array( $first['kind'], array( 'theme', 'colour' ), true ) && 0 === strpos( $base, $first['words'] ) );
+		return ( $after ? $base . ' ' . $words : $words . ' ' . $base ) . $tail;
+	}
+
+	/**
+	 * Values that read as nouns, so they go after the search ("septum clicker").
+	 */
+	const NOUNS = array( 'fitting:clicker' );
+
+	/**
+	 * How well a suggestion that keeps this share of the results fits: 1 at IDEAL_SHARE, less either side.
+	 *
+	 * @param float $share A share of the results, 0 to 1.
+	 */
+	private static function fit( float $share ): float {
+		return max( 0.05, 1 - abs( $share - self::IDEAL_SHARE ) / ( 1 - self::IDEAL_SHARE ) );
+	}
+
+	/**
+	 * How much shoppers ask for something, as a weight from 1 up.
+	 *
+	 * @param int $demand OOBJ_SEARCH_Vocabulary::DEMAND's figure.
+	 */
+	private static function demand_weight( int $demand ): float {
+		return 1 + log( 1 + $demand ) / 2;
+	}
+
+	/**
+	 * Whether a facet value is in season.
+	 *
+	 * @param string $facet A facet.
+	 * @param string $value Its value.
+	 */
+	private function in_season( string $facet, string $value ): bool {
+		foreach ( OOBJ_SEARCH_Vocabulary::seasons( $this->today ) as $season ) {
+			if ( OOBJ_SEARCH_Vocabulary::SEASONS[ $season ]['facet'] === $facet && OOBJ_SEARCH_Vocabulary::SEASONS[ $season ]['value'] === $value ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Every fact value the results have that the query doesn't name, scored, as "<value> <query>".
+	 *
+	 * @param OOBJ_SEARCH_Query                 $query  What was searched.
+	 * @param array<string, array<string, int>> $counts Fact values among the results.
+	 * @param int                               $total  How many results.
+	 * @return array<int, array{text: string, kind: string, count: int, score: float}>
+	 */
+	private function facts( OOBJ_SEARCH_Query $query, array $counts, int $total ): array {
+		$catalogue  = $this->catalogue->counts();
+		$candidates = array();
+		foreach ( $counts as $facet => $values ) {
+			if ( ! empty( $query->facets[ $facet ] ) ) {
 				continue;
 			}
-			$text = OOBJ_SEARCH_Vocabulary::phrase( $facet, (string) $value ) . ' ' . $query->normalised;
-			if ( in_array( (string) $value, $this->parser->parse( $text )->facets[ $facet ] ?? array(), true ) ) {
-				return array(
+			foreach ( $values as $value => $count ) {
+				if ( $count < self::MIN_FOUND || $count >= $total ) {
+					continue;
+				}
+				$text = self::compose( $query, $facet, (string) $value );
+				if ( ! in_array( (string) $value, $this->parser->parse( $text )->facets[ $facet ] ?? array(), true ) ) {
+					continue;
+				}
+				$share   = $count / $total;
+				$overall = ( $catalogue['facts'][ $facet ][ $value ] ?? $count ) / max( 1, $catalogue['total'] );
+				$lift    = min( self::MAX_LIFT, $share / max( $overall, 0.001 ) );
+
+				$candidates[] = array(
 					'text'  => $text,
 					'kind'  => $facet,
 					'count' => $count,
+					'score' => self::fit( $share ) * sqrt( $lift ) * self::demand_weight( (int) ( OOBJ_SEARCH_Vocabulary::DEMAND[ $facet ][ $value ] ?? 0 ) ) * ( $this->in_season( $facet, (string) $value ) ? self::SEASON_BOOST : 1 ),
 				);
 			}
-		}
-		return null;
+		}//end foreach
+		return $candidates;
 	}
 
 	/**
-	 * The query with a price limit ("nose ring under $10"): the lowest of PRICES that still finds a fair share.
+	 * In season, a seasonal category the results have ("christmas earrings"), when the query names no category.
+	 *
+	 * @param OOBJ_SEARCH_Query $query What was searched.
+	 * @param int[]             $ids   The results.
+	 * @param int               $total How many.
+	 * @return array<int, array{text: string, kind: string, count: int, score: float}>
+	 */
+	private function seasonal_categories( OOBJ_SEARCH_Query $query, array $ids, int $total ): array {
+		$candidates = array();
+		foreach ( OOBJ_SEARCH_Vocabulary::seasons( $this->today ) as $season ) {
+			$season = OOBJ_SEARCH_Vocabulary::SEASONS[ $season ];
+			if ( 'category' !== $season['facet'] || ! empty( $query->facets['category'] ) ) {
+				continue;
+			}
+			$term  = get_term_by( 'slug', $season['value'], 'product_cat' );
+			$count = $term ? count( array_intersect( $ids, get_objects_in_term( (int) $term->term_id, 'product_cat' ) ) ) : 0;
+			if ( $count >= self::MIN_FOUND && $count < $total ) {
+				$candidates[] = array(
+					'text'  => self::compose( $query, 'category', $season['value'] ),
+					'kind'  => 'season',
+					'count' => $count,
+					'score' => self::fit( $count / $total ) * self::SEASON_BOOST * self::PRICE_WEIGHT,
+				);
+			}
+		}
+		return $candidates;
+	}
+
+	/**
+	 * The query with a price limit ("nose ring under $10"): the lowest of PRICES that keeps a fair share.
 	 *
 	 * @param OOBJ_SEARCH_Query $query What was searched.
 	 * @param int[]             $ids   The products it found.
 	 * @param int               $total How many.
-	 * @return array{text: string, kind: string, count: int}|null
+	 * @return array{text: string, kind: string, count: int, score: float}|null
 	 */
 	private function price( OOBJ_SEARCH_Query $query, array $ids, int $total ): ?array {
 		if ( null !== $query->min_price || null !== $query->max_price ) {
@@ -139,6 +273,7 @@ class OOBJ_SEARCH_Suggestions {
 					'text'  => $query->normalised . ' under $' . $price,
 					'kind'  => 'price',
 					'count' => $count,
+					'score' => self::fit( $count / $total ) * self::PRICE_WEIGHT,
 				);
 			}
 		}
@@ -146,11 +281,11 @@ class OOBJ_SEARCH_Suggestions {
 	}
 
 	/**
-	 * The query cheapest first ("cheap nose ring"), when it isn't already in an order.
+	 * The query cheapest first ("cheapest nose ring"), when it isn't already in an order.
 	 *
 	 * @param OOBJ_SEARCH_Query $query What was searched.
 	 * @param int               $total How many products it found.
-	 * @return array{text: string, kind: string, count: int}|null
+	 * @return array{text: string, kind: string, count: int, score: float}|null
 	 */
 	private function sort( OOBJ_SEARCH_Query $query, int $total ): ?array {
 		if ( null !== $query->sort ) {
@@ -160,11 +295,12 @@ class OOBJ_SEARCH_Suggestions {
 			'text'  => 'cheapest ' . $query->normalised,
 			'kind'  => 'sort',
 			'count' => $total,
+			'score' => self::SORT_WEIGHT,
 		);
 	}
 
 	/**
-	 * How many of the products have each fact, by facet, most common first.
+	 * How many of the products have each fact, by facet.
 	 *
 	 * @param int[] $ids Products.
 	 * @return array<string, array<string, int>>
@@ -184,12 +320,7 @@ class OOBJ_SEARCH_Suggestions {
 			)
 		);
 		// phpcs:enable
-		$counts = array();
-		foreach ( $rows as $row ) {
-			list( $facet, $value )      = array_map( 'trim', explode( ':', $row->name, 2 ) + array( '', '' ) );
-			$counts[ $facet ][ $value ] = (int) $row->products;
-		}
-		return $counts;
+		return OOBJ_SEARCH_Catalogue::by_facet( $rows );
 	}
 
 	/**
