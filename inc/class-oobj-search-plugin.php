@@ -28,6 +28,7 @@ class OOBJ_SEARCH_Plugin {
 		$catalogue   = $this->add( new OOBJ_SEARCH_Catalogue() );
 		$suggestions = $this->add( new OOBJ_SEARCH_Suggestions( $parser, $catalogue ) );
 		$notice      = $this->add( new OOBJ_SEARCH_Notice( $search, $suggestions ) );
+		$this->add( new OOBJ_SEARCH_Agent_API( $parser, $search ) );
 		$this->add( new OOBJ_SEARCH_Examples( $notice, $catalogue ) );
 		$this->add(
 			new OOBJ_SEARCH_Updates(
