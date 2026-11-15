@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
  * search as the shop (OOBJ_SEARCH_Query_Parser, OOBJ_SEARCH_Search::resolve), so "titanium threadless septum 16g under
  * $10" is understood, not just keyword-matched, and the response says what was understood and what was let go.
  *
- * GET /wp-json/oobj-search/v1/openapi describes it (OpenAPI 3.1), and /.well-known/openapi.json and
+ * GET /wp-json/oobj-search/v1/openapi describes it (OpenAPI 3.0), and /.well-known/openapi.json and
  * /.well-known/api-catalog (RFC 9727) point agents at it.
  */
 class OOBJ_SEARCH_Agent_API implements OOBJ_SEARCH_Module {
@@ -205,7 +205,7 @@ class OOBJ_SEARCH_Agent_API implements OOBJ_SEARCH_Module {
 	}
 
 	/**
-	 * The OpenAPI 3.1 description of this API.
+	 * The OpenAPI 3.0 description of this API.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -230,7 +230,7 @@ class OOBJ_SEARCH_Agent_API implements OOBJ_SEARCH_Module {
 		);
 
 		return array(
-			'openapi' => '3.1.0',
+			'openapi' => '3.0.3',
 			'info'    => array(
 				'title'       => 'Out Of Body Jewellery product search',
 				'version'     => OOBJ_SEARCH_VERSION,
@@ -292,13 +292,23 @@ class OOBJ_SEARCH_Agent_API implements OOBJ_SEARCH_Module {
 															'items' => $part,
 														),
 														'keywords'  => array( 'type' => 'string' ),
-														'min_price' => array( 'type' => array( 'number', 'null' ) ),
-														'max_price' => array( 'type' => array( 'number', 'null' ) ),
+														'min_price' => array(
+															'type' => 'number',
+															'nullable' => true,
+														),
+														'max_price' => array(
+															'type' => 'number',
+															'nullable' => true,
+														),
 														'sort'      => array(
-															'type' => array( 'string', 'null' ),
+															'type' => 'string',
+															'nullable' => true,
 															'enum' => array( 'price', 'price-desc', null ),
 														),
-														'product_number' => array( 'type' => array( 'string', 'null' ) ),
+														'product_number' => array(
+															'type' => 'string',
+															'nullable' => true,
+														),
 													),
 												),
 												'left_out' => array(
@@ -330,7 +340,10 @@ class OOBJ_SEARCH_Agent_API implements OOBJ_SEARCH_Module {
 															'price_max'   => array( 'type' => 'string' ),
 															'currency'    => array( 'type' => 'string' ),
 															'in_stock'    => array( 'type' => 'boolean' ),
-															'image'       => array( 'type' => array( 'string', 'null' ) ),
+															'image'       => array(
+																'type'     => 'string',
+																'nullable' => true,
+															),
 															'categories'  => array(
 																'type'  => 'array',
 																'items' => array( 'type' => 'string' ),

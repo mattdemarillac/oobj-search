@@ -21,7 +21,7 @@ Nothing is stored per search, and search pages stay the same URLs, so the page c
 
 ## For agents
 
-Read-only, no login: `GET /wp-json/oobj-search/v1/search?q=…&page=&per_page=` runs a query through the same reader and search as the shop and returns the products, what was understood and what was left out to find any (`inc/class-oobj-search-agent-api.php`). Agents find it by `/.well-known/openapi.json` (OpenAPI 3.1, also at `/wp-json/oobj-search/v1/openapi`), `/.well-known/ard.json` (Agentic Resource Discovery v0.91), `/.well-known/api-catalog` (RFC 9727), `Link` headers and `<link>` tags. After the plugin first updates on a site, run `wp rewrite flush` so the `.well-known` URLs work.
+Read-only, no login: `GET /wp-json/oobj-search/v1/search?q=…&page=&per_page=` runs a query through the same reader and search as the shop and returns the products, what was understood and what was left out to find any (`inc/class-oobj-search-agent-api.php`). Agents find it by `/.well-known/openapi.json` (OpenAPI 3.0.3, also at `/wp-json/oobj-search/v1/openapi`), `/.well-known/ard.json` (Agentic Resource Discovery v0.91), `/.well-known/api-catalog` (RFC 9727), `Link` headers and `<link>` tags. After the plugin first updates on a site, run `wp rewrite flush` so the `.well-known` URLs work.
 
 ## WP-CLI
 

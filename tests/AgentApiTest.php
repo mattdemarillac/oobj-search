@@ -135,7 +135,8 @@ class AgentApiTest extends OOBJ_SEARCH_TestCase {
 	public function test_the_openapi_description_covers_the_search() {
 		$spec = $this->api()->openapi();
 
-		$this->assertSame( '3.1.0', $spec['openapi'] );
+		$this->assertSame( '3.0.3', $spec['openapi'] );
+		$this->assertStringNotContainsString( '"type": [', wp_json_encode( $spec, JSON_PRETTY_PRINT ), 'OpenAPI 3.0 has no type arrays' );
 		$this->assertSame( 'searchProducts', $spec['paths']['/search']['get']['operationId'] );
 		$this->assertSame( array( 'q', 'page', 'per_page' ), wp_list_pluck( $spec['paths']['/search']['get']['parameters'], 'name' ) );
 		$this->assertSame( untrailingslashit( rest_url( 'oobj-search/v1' ) ), $spec['servers'][0]['url'] );
@@ -146,7 +147,7 @@ class AgentApiTest extends OOBJ_SEARCH_TestCase {
 		$catalog = $this->api()->well_known_document( 'api-catalog' );
 
 		$this->assertStringStartsWith( 'application/vnd.oai.openapi+json', $spec['type'] );
-		$this->assertSame( '3.1.0', json_decode( $spec['body'], true )['openapi'] );
+		$this->assertSame( '3.0.3', json_decode( $spec['body'], true )['openapi'] );
 		$this->assertStringStartsWith( 'application/linkset+json', $catalog['type'] );
 		$this->assertSame( home_url( '/.well-known/openapi.json' ), json_decode( $catalog['body'], true )['linkset'][0]['service-desc'][0]['href'] );
 		$ard = json_decode( $this->api()->well_known_document( 'ard.json' )['body'], true );
